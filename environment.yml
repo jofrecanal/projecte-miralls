@@ -1,0 +1,12 @@
+name: miralls
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+  - pip:
+    - nba_api
+    - requests
+    - beautifulsoup4
+    - pandas
+    - duckdb
