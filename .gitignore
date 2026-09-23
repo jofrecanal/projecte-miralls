@@ -1,0 +1,15 @@
+# Dades (no van a Git)
+data/raw/*
+data/processed/*
+!data/**/.gitkeep
+*.duckdb
+*.duckdb.wal
+
+# Python
+.venv/
+__pycache__/
+
+# R
+.Rproj.user/
+.Rhistory
+.RData
