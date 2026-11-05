@@ -1,0 +1,69 @@
+---
+title: "Aconseguir les dades"
+---
+
+Per saber qui és el "LeBron de l'ACB" primer necessito una cosa molt poc glamurosa: les estadístiques de tots els jugadors de les dues lligues, de la mateixa temporada i en el mateix format. Aquest capítol explica com les vaig aconseguir i per què l'ACB em va fer suar més del compte.
+
+## La NBA: la part fàcil
+
+La NBA publica les seves estadístiques a través d'un servei que es pot consultar des de Python amb una llibreria anomenada `nba_api`. Amb **una sola petició** vaig descarregar la temporada regular 2025-26 sencera: 582 jugadors i 72 columnes de dades per a cadascun. Primer resultat: Luka Dončić va ser el màxim anotador, amb 2.143 punts.
+
+Va ser tan ràpid que em vaig confiar.
+
+## L'ACB: quan la web canvia sota els teus peus
+
+Quan vaig planificar el projecte vaig marcar un risc com a "alt": *que la web de l'ACB canviï o bloquegi la descàrrega de dades*. Doncs va passar abans de començar. L'ACB havia estrenat una web nova:
+
+- Les adreces antigues de les estadístiques ja no existien.
+- Les pàgines d'equip només mostraven la temporada en curs (la 2026-27, amb sis partits jugats).
+- No hi havia cap botó per triar una temporada anterior.
+
+Per sort, la web nova té pistes amagades. Mirant com funciona per dins vaig descobrir tres coses:
+
+1. **Un paràmetre secret per triar temporada.** Afegint `editionId=90` a l'adreça de qualsevol equip, la pàgina mostra la temporada 2025-26. Amb això, 18 peticions (una per equip) em donaven tota la lliga.
+2. **Un equip amagat.** El Coviran Granada no sortia: la web l'enllaçava a una fitxa antiga del club, sense dades. El número bo (`592`) el vaig trobar a l'acta d'un partit.
+3. **Els totals exactes, dins la pàgina.** La taula visible només ensenya mitjanes per partit, però la pàgina porta a dins les dades completes en un format estructurat (JSON): punts totals, minuts en segons, tirs anotats i intentats... Sense arrodoniments.
+
+Resultat: 325 jugadors dels 18 equips de l'ACB, amb totals exactes de temporada regular. Màxim anotador: David DeJulius, amb 606 punts en 34 partits.
+
+## Comparar el que és comparable
+
+Abans d'ajuntar les dues lligues vaig haver de prendre algunes decisions:
+
+- **Només temporada regular.** Els playoffs de la NBA i de l'ACB tenen formats i durades molt diferents. Barrejar-los faria les dades menys comparables. (Un "traductor de playoffs" queda apuntat com a idea per al futur.)
+- **Totals, no mitjanes.** Amb els totals es poden calcular després estadístiques més justes, com les que tenen en compte el ritme de joc.
+- **Un mateix llenguatge per a les dues lligues.** La NBA parla de "tirs de camp" i l'ACB de "tirs de 2". Ho vaig traduir tot al format de l'ACB.
+
+## Com sé que les dades són bones?
+
+Amb una comprovació senzilla: per a cada jugador, els punts han de ser exactament **2 × tirs de 2 anotats + 3 × triples + tirs lliures**. Si m'hagués equivocat traduint alguna columna, la suma no quadraria.
+
+Ho vaig comprovar amb les 911 files de les dues lligues: **zero errors**.
+
+## El primer gràfic
+
+Amb tot a la mateixa base de dades, ja podia posar les dues lligues al mateix gràfic. Com que un partit de la NBA dura 48 minuts i un de l'ACB 40, vaig comparar valors **per 36 minuts jugats**.
+
+Dues coses em van cridar l'atenció:
+
+- Els núvols de punts de les dues lligues **se solapen molt**. Però fer 20 punts contra defenses de l'ACB no és el mateix que fer-los contra defenses de la NBA. Justament això és el que haurà de mesurar el model de traducció del projecte.
+- Els grans creadors de l'ACB, com Marcelinho Huertas o Ricky Rubio, apareixen a la mateixa zona d'assistències que Dončić o Jokić. Potser ja tenim els primers candidats a mirall...
+
+## Què he après
+
+- **Les dades mai són on esperes.** La meitat de la feina va ser fer de detectiu: mirar com funciona una web per dins.
+- **Guardar sempre les dades en brut.** Si demà la web torna a canviar, tinc una còpia de tot el que vaig descarregar.
+- **Ser respectuós.** Tres segons d'espera entre petició i petició, ús no comercial i publicar només resultats derivats, mai les dades originals.
+- **Les comprovacions simples valen or.** Una suma de punts em dona la tranquil·litat que tot quadra.
+
+Al proper capítol: com comparar lligues diferents, o per què "per 36 minuts" encara no és prou just.
+
+::: {.callout-note collapse="true"}
+## Per als curiosos: detalls tècnics
+
+- **NBA:** `nba_api`, endpoint `LeagueDashPlayerStats`, `season="2025-26"`, `season_type_all_star="Regular Season"`, `per_mode_detailed="Totals"`.
+- **ACB:** pàgines `acb.com/es/liga/equipos/<equip>/estadisticas?editionId=90&phaseId=107` (`90` = 2025-26, `107` = Liga Regular). Les dades estan en els blocs `self.__next_f.push(...)` de l'HTML (format RSC de Next.js); cada jugador té un objecte amb `totals`, `averages` i `per40`.
+- **Base de dades:** DuckDB amb tres taules (`jugadors`, `equips`, `estadistiques`). Identificadors amb prefix de lliga (`NBA_…`, `ACB_…`).
+- **Normes de descàrrega:** 3 segons entre peticions, `User-Agent` identificat, HTML en brut guardat a `data/raw/` i fora de Git.
+- **Codi:** `extract/nba_temporada.py`, `extract/acb_temporada.py`, `extract/carregar_duckdb.py`, `analysis/02_nba_vs_acb.R`.
+:::
