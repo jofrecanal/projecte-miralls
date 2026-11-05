@@ -24,7 +24,7 @@ EQUIPS = [
     "recoletas-salud-san-pablo-burgos-549", "rio-breogan-25", "surne-bilbao-4",
     "ucam-murcia-12", "unicaja-14", "valencia-basket-13",
     "dreamland-gran-canaria-5",
-    # "coviran-granada-?",  # PENDENT: la web no en mostra les dades
+    "coviran-granada-592",
 ]
 
 COLUMNES = [
