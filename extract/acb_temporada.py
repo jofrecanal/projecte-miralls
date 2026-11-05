@@ -48,7 +48,7 @@ def a_numero(text):
 
 
 def llegir_equip(slug):
-    url = f"https://acb.com/es/liga/equipos/{slug}/estadisticas?editionId={EDICIO}"
+    url = f"https://acb.com/es/liga/equipos/{slug}/estadisticas?editionId={EDICIO}&phaseId=107"
     r = requests.get(url, headers=CAP, timeout=30)
     r.raise_for_status()
     carpeta = CARPETA_RAW / f"equips_{TEMPORADA}"
