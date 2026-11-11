@@ -1,3 +1,34 @@
 # D'on surt la idea
 
-*Esborrany en preparació.*
+Aquest projecte neix d'unes ganes molt concretes: aplicar el que he après estudiant a allò que més m'apassiona, el bàsquet.
+
+Vinc de la bioinformàtica. El grau i després el màster en bioestadística i bioinformàtica m'han ensenyat a treballar amb dades sorolloses, a comparar grups que no són directament comparables i a dir sempre amb quina incertesa afirmo una cosa. Mentrestant, però, els caps de setmana i les converses amb els amics giraven al voltant d'una altra cosa: els partits de la NBA, l'Euroliga i l'ACB.
+
+El Projecte Miralls és el punt on es troben aquests dos mons.
+
+## La pregunta
+
+Qualsevol aficionat ha tingut alguna vegada aquesta discussió: aquell jugador que domina a l'ACB, què faria a la NBA? I aquell base de la NBA, a quin jugador de l'Euroliga s'assembla? Normalment ho resolem a ull, amb intuïció i una mica de passió.
+
+Aquest projecte intenta respondre-ho amb dades, en dues parts:
+
+- **Miralls:** per a cada jugador, quins són els jugadors de les altres lligues amb un estil de joc més semblant.
+- **Traducció:** com canvien les estadístiques d'un jugador quan passa d'una lliga a una altra, i amb quina incertesa ho podem dir.
+
+Hi ha una connexió curiosa amb la meva formació. En bioinformàtica, quan es comparen mostres processades en laboratoris o en dies diferents, cal corregir els anomenats *batch effects*: diferències que no vénen de la biologia, sinó de com s'han mesurat les dades. Amb les lligues passa una cosa semblant. Un partit de la NBA dura 48 minuts i un de l'ACB, 40; el ritme, les regles i el nivell mitjà també són diferents. Abans de comparar jugadors, cal tractar cada lliga com un "lot" i corregir aquestes diferències.
+
+## Per què aquestes tres lligues
+
+La NBA, l'Euroliga i l'ACB són les competicions que més segueixo i, alhora, de les més populars del món. També són un bon punt de partida per una raó pràctica: cada temporada hi ha jugadors que passen d'una a l'altra, i aquests canvis són justament els que permeten aprendre com es "tradueix" el rendiment.
+
+La idea, però, va més enllà. M'agradaria que el sistema de traducció es pogués ampliar a moltes més lligues i que, algun dia, permetés comparar qualsevol jugador amb qualsevol altre, jugui on jugui.
+
+## Què és i què no és aquest projecte
+
+No pretén ser l'anàlisi definitiva del bàsquet ni una aplicació professional. Tampoc no busco cap resultat concret: no hi ha cap jugador que em faci especial il·lusió veure emmirallat. Simplement vull comparar jugadors i entendre en què s'assemblen i en què es diferencien.
+
+El que sí que vol ser és un bon punt de partida: un projecte curiós i divertit, però fet amb rigor, que demostri que l'anàlisi de dades pot aportar alguna cosa al bàsquet. M'agradaria dedicar-me al món de l'esport, i especialment al bàsquet, i aquesta és la meva manera de començar.
+
+També és la primera peça de **cief**, una marca d'anàlisi de dades aplicada al bàsquet que vull anar construint amb estudis, aplicacions i jocs com aquest.
+
+El capítol següent explica el primer repte de tot el projecte: aconseguir les dades.
