@@ -1,8 +1,12 @@
 """
-PT1 · Càrrega de NBA i ACB a DuckDB amb l'esquema comú (D13).
-Taules: jugadors, equips, estadistiques (totals, temporada regular).
+Càrrega de NBA, ACB i Euroliga a DuckDB amb l'esquema comú (D13).
+Taules:
+  - jugadors, equips, estadistiques (totals de jugador, temporada regular)
+  - totals_equip (totals de l'equip i dels seus rivals; de moment només Euroliga, per al PT2)
+L'NBA es manté a la base de dades però queda fora de la v1 (D16).
 Ús: python extract/carregar_duckdb.py
 """
+import json
 from pathlib import Path
 
 import duckdb
@@ -10,11 +14,41 @@ import pandas as pd
 
 TEMPORADA = "2025-26"
 BD = Path("data/miralls.duckdb")
+RAW = Path("data/raw")
 
-nba = pd.read_csv(f"data/raw/nba/nba_jugadors_{TEMPORADA}.csv")
-acb = pd.read_csv(f"data/raw/acb/acb_jugadors_{TEMPORADA}.csv")
+COMPTADORS = ["partits", "punts", "t2_anot", "t2_int", "t3_anot", "t3_int",
+              "tl_anot", "tl_int", "reb_of", "reb_def", "assist", "robatoris",
+              "perdues", "taps", "faltes"]
 
-# --- Estadístiques amb noms comuns ---
+nba = pd.read_csv(RAW / f"nba/nba_jugadors_{TEMPORADA}.csv")
+acb = pd.read_csv(RAW / f"acb/acb_jugadors_{TEMPORADA}.csv")
+
+
+def llegeix_json(nom, clau):
+    dades = json.loads((RAW / f"euroleague/euroleague_{nom}_{TEMPORADA}.json").read_text(encoding="utf-8"))
+    return pd.json_normalize(dades[clau])
+
+
+eur = llegeix_json("jugadors", "players")
+eur_eq = llegeix_json("equips", "teams")
+eur_riv = llegeix_json("rivals", "teams")
+
+
+def stats_euroliga(df):
+    """Columnes comunes a partir del format de l'API de l'Euroliga."""
+    return pd.DataFrame({
+        "partits": df["gamesPlayed"], "minuts": df["minutesPlayed"].round(1),
+        "punts": df["pointsScored"],
+        "t2_anot": df["twoPointersMade"], "t2_int": df["twoPointersAttempted"],
+        "t3_anot": df["threePointersMade"], "t3_int": df["threePointersAttempted"],
+        "tl_anot": df["freeThrowsMade"], "tl_int": df["freeThrowsAttempted"],
+        "reb_of": df["offensiveRebounds"], "reb_def": df["defensiveRebounds"],
+        "assist": df["assists"], "robatoris": df["steals"], "perdues": df["turnovers"],
+        "taps": df["blocks"], "faltes": df["foulsCommited"],
+    })
+
+
+# --- Estadístiques de jugador amb noms comuns ---
 est_nba = pd.DataFrame({
     "jugador_id": "NBA_" + nba["PLAYER_ID"].astype(str),
     "equip_id": "NBA_" + nba["TEAM_ID"].astype(str),
@@ -40,7 +74,19 @@ est_acb = pd.DataFrame({
     "assist": acb["assists"], "robatoris": acb["steals"], "perdues": acb["turnovers"],
     "taps": acb["blocks"], "faltes": acb["personalFouls"],
 })
-est = pd.concat([est_nba, est_acb], ignore_index=True)
+# Euroliga: els jugadors traspassats surten en una sola fila amb els equips units ("MUN;PAR")
+est_eur = pd.concat([
+    pd.DataFrame({
+        "jugador_id": "EUR_" + eur["player.code"].astype(str),
+        "equip_id": "EUR_" + eur["player.team.code"],
+        "lliga": "EUROLIGA", "temporada": TEMPORADA, "fase": "regular",
+    }),
+    stats_euroliga(eur),
+], axis=1)
+
+est = pd.concat([est_nba, est_acb, est_eur], ignore_index=True)
+est[COMPTADORS] = est[COMPTADORS].astype(int)
+est["diversos_equips"] = est["equip_id"].str.contains(";")
 sense_partits = (est["partits"] == 0).sum()
 est = est[est["partits"] > 0]
 
@@ -50,26 +96,56 @@ jugadors = pd.concat([
                   "id_font": nba["PLAYER_ID"].astype(str), "nom": nba["PLAYER_NAME"]}),
     pd.DataFrame({"jugador_id": "ACB_" + acb["JUGADOR_ID"].astype(str), "lliga": "ACB",
                   "id_font": acb["JUGADOR_ID"].astype(str), "nom": acb["JUGADOR"]}),
+    pd.DataFrame({"jugador_id": "EUR_" + eur["player.code"].astype(str), "lliga": "EUROLIGA",
+                  "id_font": eur["player.code"].astype(str), "nom": eur["player.name"]}),
 ]).drop_duplicates("jugador_id")
 equips = pd.concat([
     pd.DataFrame({"equip_id": "NBA_" + nba["TEAM_ID"].astype(str), "lliga": "NBA",
                   "nom": nba["TEAM_ABBREVIATION"]}),
     pd.DataFrame({"equip_id": "ACB_" + acb["EQUIP"], "lliga": "ACB", "nom": acb["EQUIP"]}),
+    pd.DataFrame({"equip_id": "EUR_" + eur_eq["team.code"], "lliga": "EUROLIGA",
+                  "nom": eur_eq["team.name"]}),
 ]).drop_duplicates("equip_id")
+
+# --- Totals d'equip i dels rivals (Euroliga) ---
+# Atenció: "minuts" aquí són minuts de partit de l'equip (~40 per partit), no minuts de jugador.
+propis = pd.concat([pd.DataFrame({"equip_id": "EUR_" + eur_eq["team.code"]}),
+                    stats_euroliga(eur_eq)], axis=1)
+rivals = stats_euroliga(eur_riv).add_prefix("rival_")
+rivals.insert(0, "equip_id", "EUR_" + eur_riv["team.code"])
+totals_equip = propis.merge(rivals.drop(columns=["rival_partits", "rival_minuts"]), on="equip_id")
+totals_equip.insert(1, "lliga", "EUROLIGA")
+totals_equip.insert(2, "temporada", TEMPORADA)
+totals_equip.insert(3, "fase", "regular")
+num = totals_equip.columns[totals_equip.columns.get_loc("partits"):]
+totals_equip[[c for c in num if c != "minuts"]] = totals_equip[[c for c in num if c != "minuts"]].astype(int)
 
 # --- Controls de qualitat ---
 print("=== Controls de qualitat ===")
 print(f"Files amb 0 partits descartades: {sense_partits}")
 calc = 2 * est["t2_anot"] + 3 * est["t3_anot"] + est["tl_anot"]
-for lliga in ["NBA", "ACB"]:
+for lliga in ["NBA", "ACB", "EUROLIGA"]:
     mal = ((calc != est["punts"]) & (est["lliga"] == lliga)).sum()
     print(f"{lliga}: files on punts != 2*T2 + 3*T3 + TL -> {mal}")
 dup = est.duplicated(["jugador_id", "equip_id", "temporada"]).sum()
 print(f"Files duplicades (jugador, equip, temporada): {dup}")
+print(f"Euroliga: jugadors amb diversos equips en una sola fila -> {est['diversos_equips'].sum()}")
+
+# Minuts dels jugadors = 5 x minuts de l'equip (només equips sense traspassos)
+eur_ok = est[(est["lliga"] == "EUROLIGA") & ~est["diversos_equips"]]
+equips_traspas = set(";".join(est.loc[est["diversos_equips"], "equip_id"].str[4:]).split(";"))
+suma = eur_ok.groupby("equip_id")["minuts"].sum()
+comp = totals_equip.set_index("equip_id")["minuts"] * 5
+nets = [e for e in comp.index if e[4:] not in equips_traspas]
+desviacio = (suma[nets] - comp[nets]).abs().max()
+print(f"Euroliga: {len(nets)} equips sense traspassos, desviació màxima minuts jugadors vs 5 x equip -> {desviacio:.1f} min")
+punts_rivals = totals_equip["rival_punts"].sum() == totals_equip["punts"].sum()
+print(f"Euroliga: punts a favor totals = punts dels rivals totals -> {punts_rivals}")
 
 # --- Escriure a DuckDB ---
 con = duckdb.connect(str(BD))
-for nom, df in {"jugadors": jugadors, "equips": equips, "estadistiques": est}.items():
+taules = {"jugadors": jugadors, "equips": equips, "estadistiques": est, "totals_equip": totals_equip}
+for nom, df in taules.items():
     con.register("tmp", df)
     con.execute(f"CREATE OR REPLACE TABLE {nom} AS SELECT * FROM tmp")
     con.unregister("tmp")
@@ -79,5 +155,10 @@ con.sql("""
     SELECT lliga, COUNT(*) AS files, COUNT(DISTINCT jugador_id) AS jugadors,
            COUNT(DISTINCT equip_id) AS equips, SUM(punts) AS punts_totals
     FROM estadistiques GROUP BY lliga ORDER BY lliga
+""").show()
+con.sql("""
+    SELECT j.nom, e.equip_id, e.partits, e.minuts, e.punts
+    FROM estadistiques e JOIN jugadors j USING (jugador_id)
+    WHERE e.lliga = 'EUROLIGA' ORDER BY e.punts DESC LIMIT 5
 """).show()
 con.close()
