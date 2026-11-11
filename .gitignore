@@ -13,3 +13,7 @@ __pycache__/
 .Rproj.user/
 .Rhistory
 .RData
+
+# Quarto (fitxers generats)
+memoria/_book/
+memoria/.quarto/

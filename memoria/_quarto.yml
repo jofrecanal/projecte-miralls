@@ -1,0 +1,23 @@
+project:
+  type: book
+  output-dir: _book
+
+book:
+  title: "Projecte Miralls"
+  subtitle: "Qui és el mirall d'un jugador a una altra lliga?"
+  author: "Jofre Canal Ferrer"
+  date: last-modified
+  chapters:
+    - index.qmd
+    - 01-don-surt-la-idea.qmd
+    - 02-aconseguir-les-dades.qmd
+
+lang: ca
+
+execute:
+  freeze: auto
+
+format:
+  html:
+    theme: cosmo
+    toc: true

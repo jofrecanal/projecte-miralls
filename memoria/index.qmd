@@ -1,0 +1,12 @@
+# Presentació {.unnumbered}
+
+Aquest llibre explica com s'ha construït el Projecte Miralls, un projecte personal de ciència de dades que compara jugadors de la NBA, l'Euroliga i l'ACB.
+
+La pregunta és senzilla de formular: qui és el "mirall" d'un jugador a una altra lliga, i com rendiria si hi jugués?
+
+El llibre s'escriu mentre el projecte avança. Cada capítol correspon a una etapa i està pensat per a un públic general. Els detalls tècnics queden en apartats plegables per a qui els vulgui consultar.
+
+::: {.callout-note}
+## Sobre les dades
+Les estadístiques pertanyen a les lligues. Aquest projecte no les redistribueix: només en publica resultats derivats, amb finalitat no comercial.
+:::
