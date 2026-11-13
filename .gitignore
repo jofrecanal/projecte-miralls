@@ -17,3 +17,7 @@ __pycache__/
 # Quarto (fitxers generats)
 memoria/_book/
 memoria/.quarto/
+
+# Informes generats a analysis/ (es regeneren amb Quarto)
+analysis/*.html
+analysis/*_files/

@@ -1,0 +1,211 @@
+---
+title: "PT2 · Informe exploratori: ACB i Euroliga 2025-26"
+subtitle: "Possessions, shrinkage i dimensions d'estil"
+author: "Jofre Canal Ferrer"
+date: 2026-11-13
+lang: ca
+format:
+  html:
+    toc: true
+    code-fold: true
+    embed-resources: true
+execute:
+  warning: false
+  message: false
+---
+
+```{r}
+#| label: configuracio
+#| include: false
+# El document es genera des d'analysis/: fem servir la biblioteca de renv del projecte
+# i treballem des de l'arrel, on hi ha data/miralls.duckdb.
+.libPaths(c(Sys.glob("../renv/library/*/R-*/*"), .libPaths()))
+knitr::opts_knit$set(root.dir = "..")
+```
+
+```{r}
+#| label: dades
+#| include: false
+library(tidyverse)
+library(DBI)
+
+con <- dbConnect(duckdb::duckdb(), "data/miralls.duckdb", read_only = TRUE)
+equips <- dbGetQuery(con, "SELECT * FROM totals_equip WHERE lliga IN ('ACB', 'EUROLIGA')")
+per100 <- dbGetQuery(con, "SELECT * FROM per100")
+vz <- dbGetQuery(con, "SELECT * FROM variables_z")
+dims <- dbGetQuery(con, "SELECT * FROM dimensions")
+dbDisconnect(con, shutdown = TRUE)
+
+colors_lliga <- c(ACB = "#2a78d6", EUROLIGA = "#eb6834")   # paleta de referència, slots 1 i 2
+noms_lliga <- c(ACB = "ACB", EUROLIGA = "Euroliga")
+tema <- theme_minimal(base_size = 12) +
+  theme(panel.grid.minor = element_blank(), legend.position = "top",
+        plot.title.position = "plot", strip.text = element_text(face = "bold"))
+theme_set(tema)
+
+possessions <- function(fga, fta, orb, tov) fga + 0.44 * fta - orb + tov
+equips <- equips |>
+  mutate(poss_propi = possessions(t2_int + t3_int, tl_int, reb_of, perdues),
+         poss_rival = possessions(rival_t2_int + rival_t3_int, rival_tl_int, rival_reb_of, rival_perdues),
+         poss = if_else(is.na(poss_rival), poss_propi, (poss_propi + poss_rival) / 2),
+         ritme = 40 * poss / minuts)
+llindar <- per100 |> count(lliga, supera_llindar) |>
+  pivot_wider(names_from = supera_llindar, values_from = n)
+```
+
+Aquest informe és l'entregable del PT2 (fita F2). Resumeix com s'han passat les estadístiques de l'ACB i l'Euroliga a una escala comparable: possessions, shrinkage dels percentatges de tir i z-scores dins de cada lliga. Les decisions que s'hi apliquen són la D15 i de la D18 a la D23 del registre.
+
+::: {.callout-note}
+## Conclusió principal
+Estandarditzar dins de cada lliga funciona. Els jugadors que juguen totes dues competicions tenen un perfil d'estil gairebé idèntic a l'ACB i a l'Euroliga, amb correlacions d'entre 0,82 i 0,97 en set de les nou variables d'estil.
+:::
+
+## Dades i llindar
+
+La temporada regular 2025-26 té `r nrow(per100)` jugadors: `r sum(per100$lliga == "ACB")` de l'ACB i `r sum(per100$lliga == "EUROLIGA")` de l'Euroliga. Per al càlcul dels z-scores només compten els que han jugat almenys el 15% dels minuts possibles (D22): `r llindar[["TRUE"]][llindar$lliga == "ACB"]` jugadors de l'ACB (204 minuts) i `r llindar[["TRUE"]][llindar$lliga == "EUROLIGA"]` de l'Euroliga (228 minuts).
+
+## Ritme dels equips
+
+Les possessions es calculen amb els totals oficials de cada equip (D15 i D18). L'ACB juga a un ritme més alt que l'Euroliga: és la primera diferència entre lligues que cal corregir.
+
+```{r}
+#| label: fig-ritme
+#| fig-cap: "Possessions per 40 minuts de cada equip, temporada regular 2025-26. La línia vertical és la mitjana de la lliga."
+#| fig-height: 3.2
+mitjanes <- equips |> group_by(lliga) |> summarise(ritme = mean(ritme))
+ggplot(equips, aes(x = ritme, y = noms_lliga[lliga], colour = lliga)) +
+  geom_point(size = 3, alpha = 0.8) +
+  geom_point(data = mitjanes, shape = "|", size = 9) +
+  scale_colour_manual(values = colors_lliga, guide = "none") +
+  labs(x = "Possessions per 40 minuts", y = NULL)
+```
+
+L'ACB fa de mitjana `r round(mitjanes$ritme[mitjanes$lliga == "ACB"], 1)` possessions per 40 minuts i l'Euroliga `r round(mitjanes$ritme[mitjanes$lliga == "EUROLIGA"], 1)`. A l'Euroliga, on hi ha els totals dels rivals, les possessions pròpies i les del rival difereixen com a màxim un 0,9%. Per això a l'ACB es poden fer servir només les pròpies.
+
+## Shrinkage dels percentatges de tir
+
+El percentatge de triples d'un jugador que en tira pocs té molt de soroll. Amb el shrinkage beta-binomial (D21), cada jugador s'acosta a una mitjana que depèn del seu volum de tir: com menys intents, més s'hi acosta.
+
+```{r}
+#| label: fig-shrinkage
+#| fig-cap: "Percentatge de triples brut i encongit segons el nombre d'intents. Cada segment uneix el valor brut (gris) amb l'encongit (color) d'un mateix jugador."
+#| fig-height: 4.5
+sh <- per100 |>
+  filter(t3_int > 0) |>
+  left_join(vz |> select(jugador_id, t3_pct_eb), by = "jugador_id") |>
+  mutate(t3_brut = 100 * t3_anot / t3_int, lliga = noms_lliga[lliga])
+ggplot(sh, aes(x = t3_int)) +
+  geom_segment(aes(xend = t3_int, y = t3_brut, yend = t3_pct_eb), colour = "grey80", linewidth = 0.3) +
+  geom_point(aes(y = t3_brut), colour = "grey60", size = 1) +
+  geom_point(aes(y = t3_pct_eb, colour = lliga), size = 1.4) +
+  scale_colour_manual(values = setNames(colors_lliga, noms_lliga), guide = "none") +
+  scale_x_log10() +
+  coord_cartesian(ylim = c(0, 100)) +
+  facet_wrap(~ lliga) +
+  labs(x = "Triples intentats (escala logarítmica)", y = "Percentatge de triples (%)")
+```
+
+Els jugadors amb molt pocs intents queden a prop de la mitjana dels que tiren poc (entre el 20% i el 30%), i els que en tiren més de 150 gairebé no es mouen. El percentatge encongit és el que entra a la dimensió de nivell.
+
+## Diferències entre lligues abans d'estandarditzar
+
+Sense estandarditzar, les variables d'estil tenen distribucions força semblants a les dues lligues. Les petites diferències que hi ha les eliminen els z-scores (D20): cada jugador es compara amb la seva pròpia lliga.
+
+```{r}
+#| label: fig-distribucions
+#| fig-cap: "Distribució de les variables d'estil per lliga, jugadors per sobre del llindar. Valors sense estandarditzar."
+#| fig-height: 6
+etiquetes <- c(t3_rati = "Triples / tirs de camp (%)", tl_rati = "Tirs lliures / tirs de camp (%)",
+               ast_pct = "AST%", ast_perd = "log(assistències / pèrdues)",
+               orb_pct = "ORB%", reb_def_100 = "Rebots defensius / 100 poss.",
+               robatoris_100 = "Robatoris / 100 poss.", taps_100 = "Taps / 100 poss.",
+               usg = "Usage (%)")
+vz |>
+  filter(supera_llindar) |>
+  select(lliga, all_of(names(etiquetes))) |>
+  pivot_longer(-lliga, names_to = "variable", values_to = "valor") |>
+  mutate(variable = factor(etiquetes[variable], levels = etiquetes), lliga = noms_lliga[lliga]) |>
+  ggplot(aes(x = valor, colour = lliga, fill = lliga)) +
+  geom_density(alpha = 0.15, linewidth = 0.6) +
+  scale_colour_manual(values = setNames(colors_lliga, noms_lliga)) +
+  scale_fill_manual(values = setNames(colors_lliga, noms_lliga)) +
+  facet_wrap(~ variable, scales = "free", ncol = 3) +
+  labs(x = NULL, y = NULL, colour = NULL, fill = NULL) +
+  theme(axis.text.y = element_blank())
+```
+
+## Relacions entre variables d'estil
+
+Algunes variables van juntes, com el rebot ofensiu, el rebot defensiu i els taps, que defineixen els interiors. Això justifica dues decisions del motor de miralls: que cada dimensió pesi el mateix i que la distància es calculi amb Mahalanobis o amb components principals (PT3).
+
+```{r}
+#| label: fig-correlacions
+#| fig-cap: "Correlació entre els z-scores de les variables d'estil, jugadors per sobre del llindar de totes dues lligues."
+#| fig-height: 5.5
+estil <- dims$variable[dims$tipus == "estil"]
+m <- vz |> filter(supera_llindar) |> select(all_of(paste0("z_", estil))) |>
+  cor(use = "pairwise.complete.obs")
+dimnames(m) <- list(etiquetes[estil], etiquetes[estil])
+as_tibble(m, rownames = "a") |>
+  pivot_longer(-a, names_to = "b", values_to = "r") |>
+  mutate(a = factor(a, levels = etiquetes[estil]), b = factor(b, levels = rev(etiquetes[estil]))) |>
+  ggplot(aes(a, b, fill = r)) +
+  geom_tile(colour = "white", linewidth = 1) +
+  geom_text(aes(label = sprintf("%.2f", r)), size = 3) +
+  scale_fill_gradient2(low = "#2a78d6", mid = "grey97", high = "#e34948", limits = c(-1, 1)) +
+  labs(x = NULL, y = NULL, fill = "Correlació") +
+  theme(axis.text.x = element_text(angle = 35, hjust = 1), panel.grid = element_blank())
+```
+
+## Validació: el mateix jugador a totes dues lligues
+
+Els jugadors del Real Madrid, el Barça, el Valencia i el Baskonia juguen l'ACB i l'Euroliga la mateixa temporada. Si els z-scores mesuren el rol i no la lliga, el perfil de cada jugador ha de ser semblant a totes dues competicions.
+
+```{r}
+#| label: dades-validacio
+normalitza <- function(nom) {
+  nom <- if_else(str_detect(nom, ","), str_replace(nom, "^(.*),\\s*(.*)$", "\\2 \\1"), nom)
+  nom |> stringi::stri_trans_general("Latin-ASCII") |> str_to_lower() |> str_squish()
+}
+parells <- vz |> filter(supera_llindar) |>
+  mutate(clau = normalitza(nom)) |>
+  add_count(lliga, clau) |> filter(n == 1) |>
+  select(clau, lliga, starts_with("z_")) |>
+  pivot_longer(starts_with("z_"), names_to = "variable", values_to = "z") |>
+  pivot_wider(names_from = lliga, values_from = z) |>
+  filter(!is.na(ACB), !is.na(EUROLIGA)) |>
+  mutate(variable = str_remove(variable, "^z_"))
+correlacions <- parells |> group_by(variable) |>
+  summarise(r = cor(ACB, EUROLIGA)) |>
+  left_join(dims, by = "variable") |>
+  mutate(etiqueta = coalesce(etiquetes[variable],
+                             c(ts_eb = "TS% encongit", t3_pct_eb = "3P% encongit",
+                               tl_pct_eb = "TL% encongit", punts_100 = "Punts / 100 poss.",
+                               pct_minuts = "% de minuts")[variable]))
+```
+
+```{r}
+#| label: fig-validacio
+#| fig-cap: !expr paste0("Correlació entre el z-score a l'ACB i a l'Euroliga per als ", n_distinct(parells$clau), " jugadors que superen el llindar a totes dues lligues.")
+#| fig-height: 4.5
+ggplot(correlacions, aes(x = r, y = reorder(etiqueta, r), colour = tipus)) +
+  geom_segment(aes(x = 0, xend = r, yend = reorder(etiqueta, r)), linewidth = 2, lineend = "round") +
+  geom_text(aes(label = sprintf("%.2f", r)), hjust = -0.3, size = 3.2, colour = "grey20") +
+  scale_colour_manual(values = c(estil = "#2a78d6", nivell = "#6250d6"),
+                      labels = c(estil = "Estil", nivell = "Nivell")) +
+  scale_x_continuous(limits = c(0, 1.08), breaks = seq(0, 1, 0.25)) +
+  labs(x = "Correlació ACB - Euroliga", y = NULL, colour = NULL)
+```
+
+Set de les nou variables d'estil tenen correlacions d'entre 0,82 i 0,97. Les dues que baixen són la relació assistències/pèrdues (0,74) i els robatoris (0,58), totes dues amb molt de soroll en una sola temporada. Les de nivell són més irregulars: el 3P% encongit es manté (0,88), però el TS% encongit es queda en 0,50. És raonable, perquè l'eficiència sí que pot canviar quan els rivals són més forts. És just el que haurà d'estimar el model de traducció (PT5).
+
+## Limitacions
+
+- **ACB sense totals dels rivals.** El rebot defensiu i els taps es mesuren per 100 possessions i no en percentatge (D23), i l'ORB% de l'ACB és una aproximació validada amb l'Euroliga (correlació de 0,998).
+- **Jugadors traspassats de l'Euroliga.** Les possessions dels 9 jugadors traspassats es calculen amb la mitjana dels seus equips, amb un error màxim d'un ±5% (D19).
+- **Una sola temporada.** Amb 34 o 38 partits, el triple de molts jugadors queda molt a prop de la mitjana. El PT4 amplia les dades a unes 10 temporades.
+- **Validació amb pocs jugadors.** La comprovació de la D20 es basa en jugadors d'equips grans; els rols d'equips més modestos podrien comportar-se diferent.
+
+---
+
+*Fonts: acb.com i Euroleague (api-live.euroleague.net), temporada regular 2025-26. Ús personal i no comercial; només es mostren resultats derivats (data/FONTS.md).*
