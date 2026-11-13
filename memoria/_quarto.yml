@@ -11,6 +11,7 @@ book:
     - index.qmd
     - 01-don-surt-la-idea.qmd
     - 02-aconseguir-les-dades.qmd
+    - 03-comparar-lligues.qmd
 
 lang: ca
 

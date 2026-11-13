@@ -1,0 +1,82 @@
+---
+title: "Comparar lligues diferents"
+---
+
+Al capítol anterior vaig acabar amb una promesa: explicar per què comparar jugadors "per 36 minuts" no és prou just. Aquest capítol és la resposta. Explica com he posat les estadístiques de dues lligues en una mateixa escala i com he comprovat que el resultat té sentit.
+
+## Un canvi de pla
+
+Abans de començar vaig llegir què s'ha fet en altres llocs per comparar jugadors de lligues diferents. Aquesta lectura em va fer canviar el pla original: la primera versió del projecte deixa de banda la NBA i es concentra en l'**ACB** i l'**Euroliga**.
+
+Hi ha tres motius:
+
+- **Les mateixes regles.** L'ACB i l'Euroliga juguen amb regles FIBA i partits de 40 minuts. La NBA té una altra durada, una altra línia de triple i unes altres regles defensives. Massa diferències de cop.
+- **Una mostra gairebé perfecta.** El Real Madrid, el Barça, el Valencia i el Baskonia juguen totes dues competicions la mateixa temporada. Els seus jugadors surten a les dues lligues amb el mateix equip i el mateix entrenador. És el millor experiment natural possible per comparar lligues.
+- **Un nínxol on puc aportar alguna cosa.** De la NBA hi ha anàlisis de sobres; del bàsquet europeu, moltes menys.
+
+La NBA no desapareix: queda com a extensió per al futur, igual que la resta de lligues europees.
+
+## Comptar possessions, no minuts
+
+Un minut de bàsquet no val el mateix a tot arreu. Hi ha equips que corren i atacen ràpid, i n'hi ha que gasten tota la possessió. Un jugador d'un equip ràpid tindrà més oportunitats de fer punts en els mateixos minuts.
+
+Per això els analistes no compten minuts, sinó **possessions**: el nombre de vegades que un equip té la pilota. No es comptabilitzen directament, però es poden estimar amb una fórmula molt coneguda: tirs de camp intentats, més una part dels tirs lliures, menys els rebots ofensius (que allarguen la mateixa possessió), més les pèrdues.
+
+Amb això, les estadístiques es poden expressar **per 100 possessions** a pista. Una primera troballa: l'ACB juga més ràpid que l'Euroliga, amb unes 77 possessions per 40 minuts contra unes 74. Comparar per minuts afavoriria lleugerament els jugadors de l'ACB.
+
+En aquest pas vaig descobrir un detall que no sortia als llibres. Les lligues apunten rebots i pèrdues "d'equip", que no són de cap jugador: una pilota que surt pel fons després d'un tir fallat, o una violació de 24 segons. Al Barça, per exemple, els rebots ofensius de l'equip són 302, però sumant els dels jugadors només en surten 267. Per això les possessions s'han de calcular amb els totals oficials de l'equip i no sumant jugadors.
+
+## Quan hi ha poques dades: el triple de 5 de 10
+
+Imaginem dos jugadors: un ha encertat 5 triples de 10 (50%), i l'altre 68 de 141 (48%). Qui és millor tirador? El primer té un percentatge més alt, però amb 10 intents qualsevol cosa és possible. Una bona tarda i ja hi som.
+
+Aquest és un problema clàssic en bioestadística, i té una solució elegant: el ***shrinkage***, o encongiment. La idea és no creure del tot un percentatge fet amb pocs intents, sinó acostar-lo a allò que seria esperable per a un jugador semblant. Com menys intents, més s'hi acosta; amb molts intents, gairebé no es mou.
+
+Hi ha un matís important: no tots els jugadors que tiren poc són iguals. Els que tiren pocs triples solen ser pivots, que no són tiradors. Per això el valor de referència depèn del volum de tir: un jugador amb 10 triples s'acosta a un 27% a l'ACB, i un amb 200 a un 38%.
+
+Un exemple real: Kyle Kuric va encertar 68 de 141 triples a l'ACB (48,2%). Després de l'encongiment queda en un 41,0%, encara el millor de la lliga, però amb una xifra més prudent.
+
+## Comparar cada jugador amb la seva lliga
+
+Encara queda un problema. Encara que l'ACB i l'Euroliga juguin amb les mateixes regles, no són iguals: el nivell mitjà, l'estil dels equips i la intensitat defensiva canvien. Un 30% d'assistències no vol dir exactament el mateix a les dues lligues.
+
+Aquí torna a aparèixer la bioinformàtica. Quan es comparen mostres processades en laboratoris diferents, cada laboratori deixa la seva "empremta" a les dades, els anomenats *batch effects*. La solució habitual és comparar cada mostra amb el seu propi lot. Amb les lligues he fet el mateix: cada estadística s'expressa com a distància respecte a la mitjana de la seva lliga, en unitats de desviació (el que s'anomena un *z-score*).
+
+Així, un jugador amb un +2 en assistències és un gran creador *per a la seva lliga*, jugui on jugui. Un mirall, doncs, serà algú que fa el mateix paper relatiu a la seva competició.
+
+Les estadístiques s'agrupen en dues famílies:
+
+- **Estil (com juga):** quina proporció de triples tira, quants tirs lliures provoca, quant crea per als companys, quant rebota, quants robatoris i taps fa i quin pes té a l'atac del seu equip.
+- **Nivell (com de bé ho fa):** eficiència de tir, punts per possessió i minuts jugats.
+
+Per buscar miralls, l'estil pesarà un 80% i el nivell un 20%. M'interessa més com juga un jugador que el seu estatus.
+
+## La prova de foc
+
+Com sé que comparar cada jugador amb la seva lliga funciona? Aquí és on la mostra dels equips que juguen totes dues competicions ho canvia tot.
+
+Vaig agafar els 43 jugadors que superen el mínim de minuts a l'ACB i a l'Euroliga, i vaig comparar el seu perfil a cada lliga. Si el mètode funciona, el mateix jugador ha de tenir un perfil semblant a les dues competicions.
+
+I el té. En set de les nou estadístiques d'estil, la correlació entre el perfil a l'ACB i a l'Euroliga va de 0,82 a 0,97. La proporció de triples, per exemple, gairebé no canvia (0,97), i el pes a l'atac i les assistències tampoc (0,93 i 0,92). Les que més varien són els robatoris (0,58) i la relació entre assistències i pèrdues (0,74), que amb una sola temporada tenen molt de soroll.
+
+Les estadístiques de nivell, en canvi, varien més: l'eficiència global de tir es queda en una correlació de 0,50. Té tot el sentit: el *paper* d'un jugador és el mateix a les dues competicions, però *com de bé* el fa depèn del rival. Mesurar aquesta diferència serà la feina del model de traducció.
+
+## Què he après
+
+- **Llegir abans de decidir.** Un estat de l'art curt em va evitar construir tot el projecte sobre dues lligues massa diferents.
+- **Validar amb dades que ja tens.** Abans de fiar-me d'una aproximació, l'he comprovat on tenia la dada bona. Els equips que juguen dues competicions han estat la clau.
+- **El que he après a la universitat serveix.** Els *batch effects* i el *shrinkage* venen de la bioestadística, i encaixen perfectament amb el bàsquet.
+- **Els detalls importen.** Un jugador amb dues etapes al mateix equip estava mal comptat, i uns quants rebots "d'equip" canviaven les possessions. Cap dels dos errors es veia a primera vista.
+
+Al proper capítol: com es busca el mirall d'un jugador.
+
+::: {.callout-note collapse="true"}
+## Per als curiosos: detalls tècnics
+
+- **Euroliga:** API pública `api-live.euroleague.net/v3`, estadístiques de jugadors, d'equips i dels rivals (`opponentsTraditional`), temporada regular 2025-26. Tres peticions en total.
+- **Possessions:** POSS = FGA + 0,44 · FTA − ORB + TOV amb els totals oficials de l'equip. A l'Euroliga, mitjana de les possessions pròpies i les del rival; a l'ACB, que no publica els totals dels rivals, només les pròpies (difereixen com a màxim un 0,9%). Possessions a pista del jugador = possessions de l'equip × minuts del jugador / minuts de l'equip. Canviar el 0,44 per 0,47 no altera els rànquings (correlació de Spearman d'1,00).
+- **Shrinkage:** *empirical Bayes* beta-binomial per lliga i temporada per al 2P%, el 3P% i el TL%, amb la mitjana de la prior en funció del logaritme dels intents (regressió beta-binomial ajustada per màxima versemblança).
+- **Estandardització:** z-scores dins de cada lliga i temporada, calculats amb els jugadors que han jugat almenys el 15% dels minuts possibles (219 a l'ACB i 240 a l'Euroliga) i limitats a ±3.
+- **Variables d'estil:** triples / tirs de camp, tirs lliures / tirs de camp, AST%, log(assistències / pèrdues), ORB%, rebots defensius, robatoris i taps per 100 possessions, i *usage*. **Nivell:** TS% amb percentatges encongits, 3P% i TL% encongits, punts per 100 possessions i percentatge de minuts.
+- **Codi:** `extract/euroleague_temporada.py`, `extract/acb_totals_equip.py`, `analysis/03_possessions.R`, `analysis/04_dimensions.R` i l'informe `analysis/05_informe_exploratori.qmd`.
+:::
