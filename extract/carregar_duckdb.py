@@ -2,7 +2,8 @@
 Càrrega de NBA, ACB i Euroliga a DuckDB amb l'esquema comú (D13).
 Taules:
   - jugadors, equips, estadistiques (totals de jugador, temporada regular)
-  - totals_equip (totals de l'equip i dels seus rivals; de moment només Euroliga, per al PT2)
+  - totals_equip (totals de l'equip i dels seus rivals, per al PT2). Euroliga amb rivals;
+    ACB sense rivals, perquè la web no els publica (columnes rival_* buides, D18)
 L'NBA es manté a la base de dades però queda fora de la v1 (D16).
 Ús: python extract/carregar_duckdb.py
 """
@@ -22,6 +23,7 @@ COMPTADORS = ["partits", "punts", "t2_anot", "t2_int", "t3_anot", "t3_int",
 
 nba = pd.read_csv(RAW / f"nba/nba_jugadors_{TEMPORADA}.csv")
 acb = pd.read_csv(RAW / f"acb/acb_jugadors_{TEMPORADA}.csv")
+acb_eq = pd.read_csv(RAW / f"acb/acb_equips_{TEMPORADA}.csv")  # extract/acb_totals_equip.py
 
 
 def llegeix_json(nom, clau):
@@ -117,8 +119,23 @@ totals_equip = propis.merge(rivals.drop(columns=["rival_partits", "rival_minuts"
 totals_equip.insert(1, "lliga", "EUROLIGA")
 totals_equip.insert(2, "temporada", TEMPORADA)
 totals_equip.insert(3, "fase", "regular")
+
+# --- Totals d'equip de l'ACB (sense rivals) ---
+# timePlayed de l'equip = segons sumats dels 5 jugadors -> minuts de partit = segons / 60 / 5
+totals_acb = pd.DataFrame({
+    "equip_id": "ACB_" + acb_eq["EQUIP"], "lliga": "ACB", "temporada": TEMPORADA, "fase": "regular",
+    "partits": acb_eq["numGames"], "minuts": (acb_eq["timePlayed"] / 60 / 5).round(1),
+    "punts": acb_eq["points"],
+    "t2_anot": acb_eq["twoPointersMade"], "t2_int": acb_eq["twoPointersAttempted"],
+    "t3_anot": acb_eq["threePointersMade"], "t3_int": acb_eq["threePointersAttempted"],
+    "tl_anot": acb_eq["freeThrowsMade"], "tl_int": acb_eq["freeThrowsAttempted"],
+    "reb_of": acb_eq["offensiveRebounds"], "reb_def": acb_eq["defensiveRebounds"],
+    "assist": acb_eq["assists"], "robatoris": acb_eq["steals"], "perdues": acb_eq["turnovers"],
+    "taps": acb_eq["blocks"], "faltes": acb_eq["personalFouls"],
+})
+totals_equip = pd.concat([totals_equip, totals_acb], ignore_index=True)
 num = totals_equip.columns[totals_equip.columns.get_loc("partits"):]
-totals_equip[[c for c in num if c != "minuts"]] = totals_equip[[c for c in num if c != "minuts"]].astype(int)
+totals_equip[[c for c in num if c != "minuts"]] = totals_equip[[c for c in num if c != "minuts"]].astype("Int64")
 
 # --- Controls de qualitat ---
 print("=== Controls de qualitat ===")
@@ -135,12 +152,23 @@ print(f"Euroliga: jugadors amb diversos equips en una sola fila -> {est['diverso
 eur_ok = est[(est["lliga"] == "EUROLIGA") & ~est["diversos_equips"]]
 equips_traspas = set(";".join(est.loc[est["diversos_equips"], "equip_id"].str[4:]).split(";"))
 suma = eur_ok.groupby("equip_id")["minuts"].sum()
-comp = totals_equip.set_index("equip_id")["minuts"] * 5
+te_eur = totals_equip[totals_equip["lliga"] == "EUROLIGA"]
+comp = te_eur.set_index("equip_id")["minuts"] * 5
 nets = [e for e in comp.index if e[4:] not in equips_traspas]
 desviacio = (suma[nets] - comp[nets]).abs().max()
 print(f"Euroliga: {len(nets)} equips sense traspassos, desviació màxima minuts jugadors vs 5 x equip -> {desviacio:.1f} min")
-punts_rivals = totals_equip["rival_punts"].sum() == totals_equip["punts"].sum()
+punts_rivals = te_eur["rival_punts"].sum() == te_eur["punts"].sum()
 print(f"Euroliga: punts a favor totals = punts dels rivals totals -> {punts_rivals}")
+
+# ACB: punts i minuts dels jugadors (per equip) contra els totals de l'equip
+acb_j = est[est["lliga"] == "ACB"].groupby("equip_id")[["punts", "minuts"]].sum()
+acb_t = totals_acb.set_index("equip_id")
+dif_punts = (acb_j["punts"] - acb_t["punts"]).abs().max()
+dif_min = (acb_j["minuts"] - 5 * acb_t["minuts"]).abs().max()
+print(f"ACB: {len(acb_t)} equips, diferència màxima de punts jugadors vs equip -> {dif_punts}")
+print(f"ACB: desviació màxima minuts jugadors vs 5 x equip -> {dif_min:.1f} min")
+print(f"ACB: rebots ofensius d'equip no atribuïts a cap jugador -> "
+      f"{int(acb_t['reb_of'].sum() - est.loc[est['lliga'] == 'ACB', 'reb_of'].sum())}")
 
 # --- Escriure a DuckDB ---
 con = duckdb.connect(str(BD))
