@@ -87,6 +87,49 @@ parells <- inner_join(
   vz |> filter(lliga == "ACB")      |> transmute(acb_id = jugador_id, nom_acb = nom, clau = clau_nom(nom)),
   vz |> filter(lliga == "EUROLIGA") |> transmute(eur_id = jugador_id, nom_eur = nom, clau = clau_nom(nom)),
   by = "clau", relationship = "many-to-many")
+
+# 5b. Emparellament per cognom i inicial dins dels equips de totes dues competicions
+#     (p. ex. "Facu Campazzo" a l'ACB i "CAMPAZZO, FACUNDO" a l'Euroliga)
+equips_dobles <- tibble::tribble(
+  ~patro_acb,    ~codi_eur,
+  "real-madrid", "MAD",
+  "barc",        "BAR",
+  "valencia",    "PAM",
+  "baskonia",    "BAS")
+codi_doble <- function(equips, lliga) {
+  map2_chr(equips, lliga, function(e, l) {
+    hit <- if (l == "ACB") str_detect(e, fixed(equips_dobles$patro_acb))
+           else str_detect(e, paste0("(EUR_|;)", equips_dobles$codi_eur, "\\b"))
+    if (any(hit)) equips_dobles$codi_eur[which(hit)[1]] else NA_character_
+  })
+}
+norm_nom <- function(x) {
+  x |> stri_trans_general("Latin-ASCII") |> str_to_lower() |>
+    str_replace_all("[^a-z, ]+", " ") |> str_squish()
+}
+clau_cognom <- function(nom, lliga) {
+  n <- norm_nom(nom)
+  ifelse(lliga == "EUROLIGA",
+         paste(str_trim(str_remove(n, ",.*")), str_sub(str_trim(str_remove(n, "^[^,]*,")), 1, 1)),
+         paste(str_remove(n, "^\\S+\\s*"), str_sub(n, 1, 1)))
+}
+dobles <- vz |>
+  mutate(codi = codi_doble(equips, lliga), clau2 = clau_cognom(nom, lliga)) |>
+  filter(!is.na(codi))
+cat("\n== Jugadors dels equips de totes dues competicions ==\n")
+print(count(dobles, lliga, codi))
+parells_cognom <- inner_join(
+  dobles |> filter(lliga == "ACB")      |> transmute(acb_id = jugador_id, nom_acb = nom, codi, clau2),
+  dobles |> filter(lliga == "EUROLIGA") |> transmute(eur_id = jugador_id, nom_eur = nom, codi, clau2),
+  by = c("codi", "clau2"), relationship = "many-to-many")
+nous <- anti_join(parells_cognom, parells, by = c("acb_id", "eur_id"))
+cat("\n== Parells nous trobats per cognom i inicial ==\n")
+print(nous |> select(nom_acb, nom_eur, codi))
+parells <- bind_rows(parells |> select(acb_id, nom_acb, eur_id, nom_eur),
+                     nous   |> select(acb_id, nom_acb, eur_id, nom_eur)) |>
+  distinct(acb_id, eur_id, .keep_all = TRUE)
+dup <- parells |> filter(duplicated(acb_id) | duplicated(eur_id))
+if (nrow(dup) > 0) { print(dup); warning("Hi ha jugadors emparellats més d'un cop") }
 parells_ll <- parells |> filter(acb_id %in% acb$jugador_id, eur_id %in% eur$jugador_id)
 cat(sprintf("\n== Jugadors a totes dues competicions: %d (superen el llindar a totes dues: %d) ==\n",
             nrow(parells), nrow(parells_ll)))
