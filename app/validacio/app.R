@@ -3,33 +3,41 @@
 # Mostra un jugador triat a l'atzar (equilibrat per lliga i grup) i els seus 3 miralls
 # només amb estadístiques de box score (sense res del motor), en ordre barrejat (A, B, C).
 # Cada mirall es valora com a Bo / Dubtós / Dolent, amb un comentari opcional.
-# Les valoracions es guarden a analysis/valoracions/valoracions.csv amb el nom de qui valora
-# i la versió del motor (sí que van a Git: són criteri propi, no dades de les lligues).
-# Ús (Consola de RStudio): shiny::runApp("app/validacio")
+# - Dades: dades_app.rds (analysis/07_dades_app.R; fora de Git).
+# - Configuració privada (fora de Git): privat/config.R (codi d'accés i full de Google Sheets)
+#   i privat/clau_google.json (compte de servei). Sense configuració, les valoracions es
+#   guarden a analysis/valoracions/valoracions.csv.
+# Ús local (Consola de RStudio): shiny::runApp("app/validacio")
 
 library(shiny)
-library(DBI)
 library(dplyr)
 library(readr)
 
-ARREL  <- normalizePath(file.path("..", ".."))
-BD     <- file.path(ARREL, "data", "miralls.duckdb")
-FITXER <- file.path(ARREL, "analysis", "valoracions", "valoracions.csv")
-VERSIO <- "v2: 12 variables d'estil, filtre exterior-interior i ±7 cm (D26)"
+VERSIO   <- "v2: 12 variables d'estil, filtre exterior-interior i ±7 cm (D26)"
+COLUMNES <- c("data_hora", "valorador", "versio", "jugador_id", "nom", "lliga", "lletra",
+              "rang", "mirall_id", "mirall_nom", "valoracio", "comentari")
+FITXER_LOCAL <- file.path("..", "..", "analysis", "valoracions", "valoracions.csv")
 
-# --- Dades: es llegeixen un cop i es tanca la connexió (no bloqueja DuckDB) ---
-con <- dbConnect(duckdb::duckdb(), BD, read_only = TRUE)
-miralls <- dbGetQuery(con, "SELECT * FROM miralls")
-per100  <- dbGetQuery(con, "SELECT * FROM per100")
-pl      <- dbGetQuery(con, "SELECT jugador_id, grup FROM plantilles")
-dbDisconnect(con, shutdown = TRUE)
+# --- Dades ---
+dades   <- readRDS("dades_app.rds")
+miralls <- dades$miralls
+
+# --- Configuració privada ---
+CODI_ACCES <- NULL
+FULL_ID    <- NULL
+if (file.exists("privat/config.R")) source("privat/config.R", local = TRUE)
+EN_LINIA <- !is.null(FULL_ID) && file.exists("privat/clau_google.json")
+if (EN_LINIA) {
+  library(googlesheets4)
+  gs4_auth(path = "privat/clau_google.json")
+}
 
 neteja_equip <- function(x) {
   x |> gsub("ACB_|EUR_", "", x = _) |> gsub("-[0-9]+", "", x = _) |> gsub(";", " / ", x = _)
 }
 
 # Box score per partit (temporada regular)
-box <- per100 |>
+box <- dades$per100 |>
   transmute(jugador_id,
             PJ = partits, Min = minuts / partits, Pts = punts / partits,
             Reb = (reb_of + reb_def) / partits, RO = reb_of / partits,
@@ -38,7 +46,6 @@ box <- per100 |>
             `T2%` = 100 * t2_anot / t2_int, `T3%` = 100 * t3_anot / t3_int,
             `TL%` = 100 * tl_anot / tl_int)
 
-# Fitxa de cada jugador (nom, lliga, equip, posició, alçada)
 fitxes <- bind_rows(
   miralls |> distinct(jugador_id, nom, lliga, equips, posicio, alcada_cm),
   miralls |> distinct(jugador_id = mirall_id, nom = mirall_nom, lliga = mirall_lliga,
@@ -48,16 +55,19 @@ fitxes <- bind_rows(
 
 jugadors <- miralls |>
   distinct(jugador_id, nom, lliga) |>
-  left_join(pl, by = "jugador_id") |>
+  left_join(dades$plantilles, by = "jugador_id") |>
   mutate(grup = coalesce(grup, "sense grup"), estrat = paste(lliga, grup))
 
 llegir_valoracions <- function() {
-  if (file.exists(FITXER)) {
-    read_csv(FITXER, show_col_types = FALSE, col_types = cols(.default = "c"))
+  v <- if (EN_LINIA) {
+    read_sheet(FULL_ID, col_types = "c")
+  } else if (file.exists(FITXER_LOCAL)) {
+    read_csv(FITXER_LOCAL, show_col_types = FALSE, col_types = cols(.default = "c"))
   } else {
-    tibble(valorador = character(), versio = character(), jugador_id = character(),
-           rang = character(), valoracio = character())
+    tibble()
   }
+  for (c in COLUMNES) if (!c %in% names(v)) v[[c]] <- rep(NA_character_, nrow(v))
+  v
 }
 
 # A l'atzar però equilibrat: primer una combinació lliga-grup, després un jugador
@@ -85,29 +95,16 @@ taula_box <- function(ids, etiquetes) {
 
 ui <- fluidPage(
   titlePanel("Projecte Miralls · Validació de miralls"),
-  p("S'assemblen aquests jugadors? Mira el jugador de dalt i valora cadascun dels tres ",
-    "jugadors de l'altra lliga (A, B i C): estil de joc, paper a l'equip i nivell."),
-  textInput("valorador", "El teu nom", placeholder = "Obligatori per desar"),
-  p(textOutput("estat")),
-  h3(textOutput("titol")),
-  tableOutput("box"),
-  p(em("Mitjanes per partit, temporada regular 2025-26. PJ: partits jugats. ",
-       "RO: rebots ofensius. Pèr: pèrdues. Falt: faltes comeses. F. reb: faltes rebudes.")),
-  uiOutput("valoracions_ui"),
-  actionButton("desa", "Desa i següent", class = "btn-primary"),
-  actionButton("salta", "Salta aquest jugador"),
-  hr(),
-  h4("Les teves valoracions"),
-  tableOutput("resum"),
-  p(em("Dades: acb.com i Euroleague. Ús personal i no comercial."))
+  uiOutput("pantalla")
 )
 
 server <- function(input, output, session) {
+  entrat <- reactiveVal(is.null(CODI_ACCES))
   vals   <- reactiveVal(llegir_valoracions())
   actual <- reactiveVal(NULL)
   ordre  <- reactiveVal(NULL)
   n      <- reactiveVal(0)
-  nom_valorador <- reactive(trimws(input$valorador))
+  nom_valorador <- reactive(trimws(input$valorador %||% ""))
 
   seguent <- function() {
     isolate({
@@ -119,6 +116,45 @@ server <- function(input, output, session) {
   seguent()
   id <- function(prefix, i) paste0(prefix, i, "_", n())
 
+  # --- Pantalla: codi d'accés o app ---
+  output$pantalla <- renderUI({
+    if (!entrat()) {
+      return(tagList(
+        p("Introdueix el codi d'accés que t'han donat."),
+        passwordInput("codi", "Codi d'accés"),
+        actionButton("entra", "Entra", class = "btn-primary")
+      ))
+    }
+    tagList(
+      p("S'assemblen aquests jugadors? Mira el jugador de dalt i valora cadascun dels tres ",
+        "jugadors de l'altra lliga (A, B i C): estil de joc, paper a l'equip i nivell."),
+      textInput("valorador", "El teu nom", placeholder = "Obligatori per desar"),
+      p(textOutput("estat")),
+      h3(textOutput("titol")),
+      tableOutput("box"),
+      p(em("Mitjanes per partit, temporada regular 2025-26. PJ: partits jugats. ",
+           "RO: rebots ofensius. Pèr: pèrdues. Falt: faltes comeses. F. reb: faltes rebudes.")),
+      uiOutput("valoracions_ui"),
+      actionButton("desa", "Desa i següent", class = "btn-primary"),
+      actionButton("salta", "Salta aquest jugador"),
+      hr(),
+      h4("Les teves valoracions"),
+      tableOutput("resum"),
+      p(em("Dades: acb.com i Euroleague. Ús personal i no comercial."))
+    )
+  })
+
+  observeEvent(input$entra, {
+    if (identical(trimws(input$codi), CODI_ACCES)) {
+      entrat(TRUE)
+    } else {
+      showNotification("Codi incorrecte.", type = "error")
+    }
+  })
+
+  # Quan canvia el nom, tria un jugador que aquesta persona no hagi valorat
+  observeEvent(input$valorador, seguent(), ignoreInit = TRUE)
+
   # Miralls del jugador actual, en l'ordre barrejat que es mostra (A, B, C)
   mostrats <- reactive({
     req(actual())
@@ -129,8 +165,8 @@ server <- function(input, output, session) {
   })
 
   output$estat <- renderText({
-    v <- vals() |> filter(versio == VERSIO, valorador == nom_valorador())
     if (nom_valorador() == "") return("Escriu el teu nom per començar a desar valoracions.")
+    v <- vals() |> filter(versio == VERSIO, valorador == nom_valorador())
     sprintf("%s: has valorat %d jugadors de %d.", nom_valorador(),
             n_distinct(v$jugador_id), nrow(jugadors))
   })
@@ -176,12 +212,23 @@ server <- function(input, output, session) {
     nou <- tibble(
       data_hora = format(Sys.time(), "%Y-%m-%d %H:%M:%S"), valorador = nom_valorador(),
       versio = VERSIO, jugador_id = actual()$jugador_id, nom = actual()$nom,
-      lliga = actual()$lliga, lletra = m$lletra, rang = m$rang,
+      lliga = actual()$lliga, lletra = m$lletra, rang = as.character(m$rang),
       mirall_id = m$mirall_id, mirall_nom = m$mirall_nom,
-      valoracio = v, comentari = com, d_total = round(m$d_total, 3))
-    dir.create(dirname(FITXER), showWarnings = FALSE, recursive = TRUE)
-    write_csv(nou, FITXER, append = file.exists(FITXER))
-    vals(llegir_valoracions())
+      valoracio = v, comentari = com)
+    ok <- tryCatch({
+      if (EN_LINIA) {
+        sheet_append(FULL_ID, nou)
+      } else {
+        dir.create(dirname(FITXER_LOCAL), showWarnings = FALSE, recursive = TRUE)
+        write_csv(nou, FITXER_LOCAL, append = file.exists(FITXER_LOCAL))
+      }
+      TRUE
+    }, error = function(e) {
+      showNotification(paste("No s'ha pogut desar:", conditionMessage(e)), type = "error")
+      FALSE
+    })
+    if (!ok) return()
+    vals(bind_rows(vals(), nou))
     showNotification("Desat!", type = "message", duration = 2)
     seguent()
   })

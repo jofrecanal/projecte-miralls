@@ -21,3 +21,11 @@ memoria/.quarto/
 # Informes generats a analysis/ (es regeneren amb Quarto)
 analysis/*.html
 analysis/*_files/
+
+# App de validació: secrets i dades (no van a Git, D27)
+app/validacio/privat/
+app/validacio/dades_app.rds
+
+# macOS
+.DS_Store
+app/validacio/rsconnect/
