@@ -1,0 +1,22 @@
+data_hora,valorador,versio,jugador_id,nom,lliga,lletra,rang,mirall_id,mirall_nom,valoracio,comentari,d_total
+2026-11-19 15:11:18,Jofre,"v2: 12 variables d'estil, filtre exterior-interior i ±7 cm (D26)",EUR_010316,"AJINCA, MELVIN",EUROLIGA,A,1,ACB_20210392,Josep Puerto,Bo,,0.548
+2026-11-19 15:11:18,Jofre,"v2: 12 variables d'estil, filtre exterior-interior i ±7 cm (D26)",EUR_010316,"AJINCA, MELVIN",EUROLIGA,B,3,ACB_30003969,Justin Mckoy,Bo,,0.552
+2026-11-19 15:11:18,Jofre,"v2: 12 variables d'estil, filtre exterior-interior i ±7 cm (D26)",EUR_010316,"AJINCA, MELVIN",EUROLIGA,C,2,ACB_30001214,Elias Valtonen,Bo,,0.55
+2026-11-19 15:12:32,Jofre,"v2: 12 variables d'estil, filtre exterior-interior i ±7 cm (D26)",ACB_30004878,Kobi Simmons,ACB,A,3,EUR_009549,"CORDINIER, ISAIA",Bo,,0.537
+2026-11-19 15:12:32,Jofre,"v2: 12 variables d'estil, filtre exterior-interior i ±7 cm (D26)",ACB_30004878,Kobi Simmons,ACB,B,1,EUR_007527,"BADIO, BRANCOU",Dubtós,"Et diria que Brancou Badio es molt mes defensiu, tot i aixi, el mirall es molt bo.",0.457
+2026-11-19 15:12:32,Jofre,"v2: 12 variables d'estil, filtre exterior-interior i ±7 cm (D26)",ACB_30004878,Kobi Simmons,ACB,C,2,EUR_013380,"FOURNIER, EVAN",Bo,,0.524
+2026-11-19 15:13:04,Jofre,"v2: 12 variables d'estil, filtre exterior-interior i ±7 cm (D26)",ACB_20209187,Willy Hernangómez,ACB,A,3,EUR_012878,"WRIGHT, MOSES",Dolent,Molt mes atleic que Willy,0.697
+2026-11-19 15:13:04,Jofre,"v2: 12 variables d'estil, filtre exterior-interior i ±7 cm (D26)",ACB_20209187,Willy Hernangómez,ACB,B,2,EUR_011199,"NEBO, JOSH",Dolent,Molt mes atleic que Willy,0.692
+2026-11-19 15:13:04,Jofre,"v2: 12 variables d'estil, filtre exterior-interior i ±7 cm (D26)",ACB_20209187,Willy Hernangómez,ACB,C,1,EUR_013667,"FERNANDO, BRUNO",Bo,,0.618
+2026-11-19 15:13:40,Jofre,"v2: 12 variables d'estil, filtre exterior-interior i ±7 cm (D26)",ACB_30003973,Neal Sako,ACB,A,3,EUR_011244,"DA SILVA, OSCAR",Dolent,Oscar Da Silva es molt mes exterior,0.82
+2026-11-19 15:13:40,Jofre,"v2: 12 variables d'estil, filtre exterior-interior i ±7 cm (D26)",ACB_30003973,Neal Sako,ACB,B,1,EUR_005504,"BIRUTIS, LAURYNAS",Bo,,0.58
+2026-11-19 15:13:40,Jofre,"v2: 12 variables d'estil, filtre exterior-interior i ±7 cm (D26)",ACB_30003973,Neal Sako,ACB,C,2,EUR_009733,"JEKIRI, TONYE",Bo,,0.767
+2026-11-19 15:14:20,Jofre,"v2: 12 variables d'estil, filtre exterior-interior i ±7 cm (D26)",EUR_011196,"HALL, DONTA",EUROLIGA,A,2,ACB_20210914,Emanuel Cate,Dubtós,"Es un bon mirall pero donta hall es molt mes atletic, pero molt mes",0.843
+2026-11-19 15:14:20,Jofre,"v2: 12 variables d'estil, filtre exterior-interior i ±7 cm (D26)",EUR_011196,"HALL, DONTA",EUROLIGA,B,3,ACB_30004910,Alex Len,Dubtós,"Es un bon mirall pero donta hall es molt mes atletic, pero molt mes",0.847
+2026-11-19 15:14:20,Jofre,"v2: 12 variables d'estil, filtre exterior-interior i ±7 cm (D26)",EUR_011196,"HALL, DONTA",EUROLIGA,C,1,ACB_20212461,Tryggvi Hlinason,Dubtós,"Es un bon mirall pero donta hall es molt mes atletic, pero molt mes",0.842
+2026-11-19 15:14:48,Jofre,"v2: 12 variables d'estil, filtre exterior-interior i ±7 cm (D26)",EUR_013383,"GABRIEL, WENYEN",EUROLIGA,A,3,ACB_20212174,Usman Garuba,Dubtós,,0.821
+2026-11-19 15:14:48,Jofre,"v2: 12 variables d'estil, filtre exterior-interior i ±7 cm (D26)",EUR_013383,"GABRIEL, WENYEN",EUROLIGA,B,1,ACB_30003949,Kur Kuath,Bo,,0.77
+2026-11-19 15:14:48,Jofre,"v2: 12 variables d'estil, filtre exterior-interior i ±7 cm (D26)",EUR_013383,"GABRIEL, WENYEN",EUROLIGA,C,2,ACB_30003367,Kostas Kostadinov,Dolent,,0.8
+2026-11-19 15:15:52,Jofre,"v2: 12 variables d'estil, filtre exterior-interior i ±7 cm (D26)",EUR_011204,"GRANT, JERIAN",EUROLIGA,A,1,ACB_30001900,Darius Thompson,Dubtós,"Darius Thompsnon es molt mes generador es mes base, tot i que no tinfui mes assitencies",0.553
+2026-11-19 15:15:52,Jofre,"v2: 12 variables d'estil, filtre exterior-interior i ±7 cm (D26)",EUR_011204,"GRANT, JERIAN",EUROLIGA,B,3,ACB_30000202,Matteo Spagnolo,Bo,,0.605
+2026-11-19 15:15:52,Jofre,"v2: 12 variables d'estil, filtre exterior-interior i ±7 cm (D26)",EUR_011204,"GRANT, JERIAN",EUROLIGA,C,2,ACB_30000063,Jonathan Rousselle,Dolent,,0.561
