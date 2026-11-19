@@ -47,6 +47,7 @@ def stats_euroliga(df):
         "reb_of": df["offensiveRebounds"], "reb_def": df["defensiveRebounds"],
         "assist": df["assists"], "robatoris": df["steals"], "perdues": df["turnovers"],
         "taps": df["blocks"], "faltes": df["foulsCommited"],
+        "faltes_reb": df.get("foulsDrawn"),  # D26
     })
 
 
@@ -61,7 +62,7 @@ est_nba = pd.DataFrame({
     "tl_anot": nba["FTM"], "tl_int": nba["FTA"],
     "reb_of": nba["OREB"], "reb_def": nba["DREB"], "assist": nba["AST"],
     "robatoris": nba["STL"], "perdues": nba["TOV"], "taps": nba["BLK"],
-    "faltes": nba["PF"],
+    "faltes": nba["PF"], "faltes_reb": nba.get("PFD"),
 })
 est_acb = pd.DataFrame({
     "jugador_id": "ACB_" + acb["JUGADOR_ID"].astype(str),
@@ -75,6 +76,7 @@ est_acb = pd.DataFrame({
     "reb_of": acb["offensiveRebounds"], "reb_def": acb["defensiveRebounds"],
     "assist": acb["assists"], "robatoris": acb["steals"], "perdues": acb["turnovers"],
     "taps": acb["blocks"], "faltes": acb["personalFouls"],
+    "faltes_reb": acb["foulsReceived"],  # D26
 })
 # Euroliga: els jugadors traspassats surten en una sola fila amb els equips units ("MUN;PAR")
 est_eur = pd.concat([
@@ -88,6 +90,7 @@ est_eur = pd.concat([
 
 est = pd.concat([est_nba, est_acb, est_eur], ignore_index=True)
 est[COMPTADORS] = est[COMPTADORS].astype(int)
+est["faltes_reb"] = est["faltes_reb"].astype("Int64")  # D26
 est["diversos_equips"] = est["equip_id"].str.contains(";")
 sense_partits = (est["partits"] == 0).sum()
 est = est[est["partits"] > 0]

@@ -66,12 +66,15 @@ dimensions <- tribble(
   ~variable,         ~dimensio,             ~tipus,
   "t3_rati",         "Dieta de tir",        "estil",
   "tl_rati",         "Dieta de tir",        "estil",
+  "faltes_reb_100",  "Dieta de tir",        "estil",   # D26
   "ast_pct",         "Creació",             "estil",
   "ast_perd",        "Creació",             "estil",
+  "tov_pct",         "Creació",             "estil",   # D26
   "orb_pct",         "Rebot",               "estil",
   "reb_def_100",     "Rebot",               "estil",
   "robatoris_100",   "Activitat defensiva", "estil",
   "taps_100",        "Activitat defensiva", "estil",
+  "faltes_100",      "Activitat defensiva", "estil",   # D26
   "usg",             "Pes a l'atac",        "estil",
   "ts_eb",           "Nivell",              "nivell",
   "t3_pct_eb",       "Nivell",              "nivell",

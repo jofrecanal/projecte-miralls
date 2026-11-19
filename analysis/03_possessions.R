@@ -64,7 +64,7 @@ files <- jug |>
 # --- 3. Una fila per jugador i temporada (a l'ACB, els traspassats tenen dues files) ---
 comptadors <- c("partits", "minuts", "punts", "t2_anot", "t2_int", "t3_anot", "t3_int",
                 "tl_anot", "tl_int", "reb_of", "reb_def", "assist", "robatoris", "perdues",
-                "taps", "faltes", "fga", "fgm", "poss_pista", "poss_pista_047", "fg_comp",
+                "taps", "faltes", "faltes_reb", "fga", "fgm", "poss_pista", "poss_pista_047", "fg_comp",
                 "reb_of_disp", "reb_def_disp", "acaba_equip", "t2_rival")
 
 minuts_possibles <- c(ACB = 34 * 40, EUROLIGA = 38 * 40)  # temporada regular 2025-26
@@ -76,11 +76,13 @@ per100 <- files |>
             traspassat = n() > 1 | any(diversos_equips), .groups = "drop") |>
   mutate(
     # Per 100 possessions a pista (D15)
-    across(c(punts, t2_int, t3_int, tl_int, reb_of, reb_def, assist, robatoris, perdues, taps),
+    across(c(punts, t2_int, t3_int, tl_int, reb_of, reb_def, assist, robatoris, perdues, taps,
+             faltes, faltes_reb),
            ~ 100 * .x / poss_pista, .names = "{.col}_100"),
     punts_100_047 = 100 * punts / poss_pista_047,
     # Percentatges sobre les oportunitats a pista (fórmules de Basketball-Reference)
     usg = 100 * (fga + 0.44 * tl_int + perdues) / acaba_equip,
+    tov_pct = 100 * perdues / (fga + 0.44 * tl_int + perdues),   # D26 (Basketball-Reference)
     ast_pct = 100 * assist / fg_comp,
     orb_pct = 100 * reb_of / reb_of_disp,
     drb_pct = 100 * reb_def / reb_def_disp,   # NA a l'ACB fins que tinguem els rivals (D18)

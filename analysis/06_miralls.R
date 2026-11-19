@@ -2,7 +2,7 @@
 # PT3 · Motor de miralls (D3, D22, D24, D25, D26)
 # - Distància euclidiana ponderada sobre els z-scores: cada dimensió pesa igual (D24).
 # - Distància total = 80% estil + 20% nivell (D3).
-# - Filtre de posició i alçada (D26): fora exterior <-> interior; alçada a ±10 cm
+# - Filtre de posició i alçada (D26): fora exterior <-> interior; alçada a ±7 cm
 #   (s'amplia de 5 en 5 cm si queden menys de N_TOP + 1 candidats).
 # - Comparació amb Mahalanobis i PCA (només estil): coincidència del top 3.
 # - Validació: els jugadors que juguen ACB i Euroliga s'haurien de trobar a si mateixos.
@@ -18,7 +18,7 @@ library(stringi)
 TEMPORADA    <- "2025-26"
 W_ESTIL      <- 0.8   # D3
 N_TOP        <- 3
-MARGE_ALCADA <- 10    # cm (D26)
+MARGE_ALCADA <- 7     # cm (D26)
 
 con <- dbConnect(duckdb::duckdb(), "data/miralls.duckdb")
 
