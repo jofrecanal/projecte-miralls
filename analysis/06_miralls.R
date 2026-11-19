@@ -74,20 +74,26 @@ G <- outer(acb$grup, eur$grup, compatibles)
 H <- abs(outer(acb$alcada_cm, eur$alcada_cm, "-"))
 filtre <- function(marge) G & (is.na(H) | H <= marge)
 
-permes <- filtre(MARGE_ALCADA)
-curts_f0 <- sum(rowSums(permes) < N_TOP + 1)
-curts_c0 <- sum(colSums(permes) < N_TOP + 1)
+# Cada direcció amplia el marge només per als seus propis jugadors:
+# permes_ae (files = jugadors de l'ACB) i permes_ea (columnes = jugadors de l'Euroliga)
+base <- filtre(MARGE_ALCADA)
+curts_f0 <- sum(rowSums(base) < N_TOP + 1)
+curts_c0 <- sum(colSums(base) < N_TOP + 1)
+permes_ae <- base
+permes_ea <- base
 for (marge in seq(MARGE_ALCADA + 5, 60, by = 5)) {
-  curts_f <- rowSums(permes) < N_TOP + 1
-  curts_c <- colSums(permes) < N_TOP + 1
+  curts_f <- rowSums(permes_ae) < N_TOP + 1
+  curts_c <- colSums(permes_ea) < N_TOP + 1
   if (!any(curts_f) && !any(curts_c)) break
   nou <- filtre(marge)
-  permes[curts_f, ] <- nou[curts_f, ]
-  permes[, curts_c] <- nou[, curts_c]
+  permes_ae[curts_f, ] <- nou[curts_f, ]
+  permes_ea[, curts_c] <- nou[, curts_c]
 }
-dimnames(permes) <- dimnames(d_total)
-aplica <- function(D) { D[!permes] <- Inf; D }
-d_total_f <- aplica(d_total)
+permes <- base
+dimnames(permes) <- dimnames(permes_ae) <- dimnames(permes_ea) <- dimnames(d_total)
+aplica <- function(D, P) { D[!P] <- Inf; D }
+d_total_f    <- aplica(d_total, permes_ae)   # ACB -> Euroliga
+d_total_f_ea <- aplica(d_total, permes_ea)   # Euroliga -> ACB
 
 fora_top3 <- function(D, P) {
   f <- function(D, P) mean(sapply(seq_len(nrow(D)),
@@ -173,9 +179,9 @@ cat(sprintf("   ... dels quals el filtre exclou el parell amb ell mateix: %d\n",
             sum(!permes[cbind(parells_ll$acb_id, parells_ll$eur_id)])))
 
 # 6. Validació: on queda el mateix jugador a l'altra lliga? ---------------------
-rang_propi <- function(D, p) {
+rang_propi <- function(D, p, D_ea = D) {
   r_ae <- map2_int(p$acb_id, p$eur_id, ~ as.integer(rank(D[.x, ], ties.method = "min")[.y]))
-  r_ea <- map2_int(p$acb_id, p$eur_id, ~ as.integer(rank(D[, .y], ties.method = "min")[.x]))
+  r_ea <- map2_int(p$acb_id, p$eur_id, ~ as.integer(rank(D_ea[, .y], ties.method = "min")[.x]))
   tibble(direccio = c("ACB -> Euroliga", "Euroliga -> ACB"),
          top1    = c(mean(r_ae == 1), mean(r_ea == 1)),
          top3    = c(mean(r_ae <= 3), mean(r_ea <= 3)),
@@ -183,7 +189,8 @@ rang_propi <- function(D, p) {
 }
 metodes <- list(principal_filtrat = d_total_f, principal_total = d_total,
                 principal_estil = d_estil, mahalanobis = d_mahal, pca = d_pca)
-validacio <- imap_dfr(metodes, ~ rang_propi(.x, parells_ll) |> mutate(metode = .y, .before = 1))
+validacio <- imap_dfr(metodes, ~ rang_propi(.x, parells_ll,
+                                            if (.y == "principal_filtrat") d_total_f_ea else .x) |> mutate(metode = .y, .before = 1))
 cat("\n== Validació: es troben a si mateixos? ==\n")
 print(validacio |> mutate(across(c(top1, top3), ~ round(.x, 2))), n = Inf)
 
@@ -212,7 +219,7 @@ taula_miralls <- function(D, De, Dn, excloure) {
 }
 m_ae <- taula_miralls(d_total_f, d_estil, d_nivell,
                       parells |> transmute(origen_id = acb_id, desti_id = eur_id))
-m_ea <- taula_miralls(t(d_total_f), t(d_estil), t(d_nivell),
+m_ea <- taula_miralls(t(d_total_f_ea), t(d_estil), t(d_nivell),
                       parells |> transmute(origen_id = eur_id, desti_id = acb_id))
 
 info <- jug |> select(jugador_id, nom, lliga, equips, posicio, alcada_cm)

@@ -2,23 +2,23 @@
 title: "Com es busca un mirall"
 ---
 
-Al capítol anterior vaig deixar cada jugador descrit amb nou estadístiques d'estil i cinc de nivell, totes comparades amb la mitjana de la seva lliga. Ara ve la part que dona nom al projecte: a partir d'aquests números, trobar el jugador de l'altra lliga que més s'assembla a cadascun.
+Al capítol anterior vaig deixar cada jugador descrit amb una sèrie d'estadístiques d'estil i de nivell, totes comparades amb la mitjana de la seva lliga. Ara ve la part que dona nom al projecte: a partir d'aquests números, trobar el jugador de l'altra lliga que més s'assembla a cadascun.
 
 ## Què vol dir "assemblar-se"
 
-Dir que dos jugadors s'assemblen sembla fàcil, però cal concretar-ho. Facu Campazzo i Kostas Sloukas són bases, però en què s'assemblen exactament? I quant?
+Dir que dos jugadors s'assemblen sembla fàcil, però cal concretar-ho. Facu Campazzo i Chris Jones són bases, però en què s'assemblen exactament? I quant?
 
 La idea és imaginar cada jugador com un punt en un mapa. Un mapa normal té dues coordenades; aquest en té una per a cada estadística. Dos jugadors s'assemblen si són a prop en aquest mapa, és a dir, si les seves estadístiques, comparades amb la seva lliga, són semblants una per una.
 
 Hi ha una trampa. Les estadístiques d'estil s'agrupen en cinc famílies:
 
-- **Dieta de tir:** quants triples tira i quants tirs lliures provoca.
-- **Creació:** quantes assistències dona i com les equilibra amb les pèrdues.
+- **Dieta de tir:** quants triples tira, quants tirs lliures provoca i quantes faltes rep.
+- **Creació:** quantes assistències dona, com les equilibra amb les pèrdues i quantes possessions acaba en pèrdua.
 - **Rebot:** ofensiu i defensiu.
-- **Activitat defensiva:** robatoris i taps.
+- **Activitat defensiva:** robatoris, taps i faltes comeses.
 - **Pes a l'atac:** quantes possessions de l'equip acaba ell.
 
-Si comptés cada estadística per igual, les famílies que en tenen dues pesarien el doble que el pes a l'atac, que només en té una. Per evitar-ho, cada família pesa el mateix, i dins de cada família el pes es reparteix entre les seves estadístiques.
+Algunes famílies tenen tres estadístiques, una en té dues i una altra només una. Si comptés cada estadística per igual, el pes a l'atac quedaria arraconat. Per evitar-ho, cada família pesa el mateix, i dins de cada família el pes es reparteix entre les seves estadístiques.
 
 Després, com vaig decidir al principi, la distància d'estil pesa un 80% i la de nivell un 20%. Un mirall és, sobretot, algú que juga igual; que ho faci igual de bé és secundari.
 
@@ -28,7 +28,7 @@ Hi ha moltes maneres de mesurar la distància entre dos punts. N'he provat tres:
 
 - **La distància "de regle"**, amb els pesos per família que acabo d'explicar. És la més senzilla i la més fàcil d'explicar: es pot dir en quines famílies s'assemblen dos jugadors i en quines no.
 - **La distància de Mahalanobis**, que té en compte que algunes estadístiques van lligades (qui dona moltes assistències sol perdre més pilotes) per no comptar dues vegades la mateixa informació.
-- **Una anàlisi de components principals (PCA)**, que resumeix les nou estadístiques en quatre "eixos" i mesura la distància sobre aquests eixos.
+- **Una anàlisi de components principals (PCA)**, que resumeix les estadístiques d'estil en uns quants "eixos" i mesura la distància sobre aquests eixos.
 
 Les tres donen resultats força diferents: les dues últimes només coincideixen amb la distància de regle en la meitat dels miralls del top 3. Triar el mètode, doncs, no és un detall. Però com es tria?
 
@@ -38,14 +38,14 @@ Aquí tornen a ser clau els equips que juguen totes dues competicions. El Madrid
 
 És una prova exigent: per a cada jugador hi ha més de 200 candidats a l'altra lliga. Si l'ordre fos a l'atzar, només hi hauria un 1% de probabilitats que el mateix jugador quedés al top 3.
 
-Aquests són els resultats amb els 47 jugadors que superen el mínim de minuts a totes dues competicions:
+Aquests són els resultats amb els 47 jugadors que superen el mínim de minuts a totes dues competicions (el primer número és en la direcció ACB → Euroliga, i el segon, a l'inrevés):
 
 | Mètode | Es troba a si mateix en 1r lloc | Es troba a si mateix al top 3 |
 |---|---|---|
-| Distància de regle (estil + nivell) | 51-55% | 81% |
-| Distància de regle (només estil) | 40% | 74% |
-| Mahalanobis | 30-32% | 55-60% |
-| PCA | 15% | 34% |
+| Distància de regle (estil + nivell) | 55% / 62% | 79% / 83% |
+| Distància de regle (només estil) | 53% / 43% | 79% / 74% |
+| Mahalanobis | 38% / 40% | 55% / 53% |
+| PCA | 28% / 28% | 51% / 55% |
 
 La distància més senzilla és també la que funciona millor. I afegir-hi el nivell ajuda: un jugador que té un paper important i eficient al seu equip el té a totes dues competicions.
 
@@ -59,23 +59,36 @@ Va funcionar... gairebé. En revisar els primers resultats vaig veure que Campaz
 
 La solució va ser afegir un segon criteri: el mateix cognom i la mateixa inicial, però només dins dels quatre equips que juguen totes dues competicions, per no confondre dos jugadors diferents amb el mateix cognom. Amb això vaig passar de 43 a 47 jugadors a la prova. És una versió petita d'un problema que tornarà amb força quan hi afegeixi més temporades: saber quan dos registres són la mateixa persona.
 
+## Segona versió: un base no pot ser el mirall d'un pivot
+
+Provant la primera versió van sortir alguns miralls que, mirant-los amb ulls de bàsquet, no tenien sentit: jugadors amb números semblants però amb cossos i papers molt diferents. Per això vaig fer dues millores.
+
+**Posició i alçada.** Les plantilles de totes dues lligues donen la posició i l'alçada de cada jugador. Ara, abans d'ordenar per estil, el motor aplica un filtre: un exterior (base o escorta) no pot tenir com a mirall un interior (pivot), ni a l'inrevés, i l'alçada ha de ser a 7 centímetres com a molt. Si algun jugador es queda sense prou candidats, com passa amb els més baixos o els més alts, el marge s'amplia una mica només per a ell.
+
+Hi va haver dues sorpreses. La primera, que les lligues no fan servir les mateixes etiquetes: l'ACB té cinc posicions i l'Euroliga, tres, i un mateix jugador pot ser ala-pivot en una i pivot a l'altra (és el cas de Tornike Shengelia). Per això el filtre treballa amb tres grups, exteriors, alers i interiors, i només separa els extrems. La segona, que l'alçada d'un mateix jugador pot variar 2 o 3 centímetres d'una lliga a l'altra (Jan Vesely fa 2,10 a l'ACB i 2,13 a l'Euroliga). Un marge de 7 centímetres ho absorbeix sense problemes.
+
+**Tres estadístiques més.** He afegit les faltes rebudes, les pèrdues per possessió i les faltes comeses, cadascuna a la seva família. Abans d'acceptar-les les vaig passar per la mateixa prova que al capítol anterior: el mateix jugador ha de tenir un valor semblant a les dues lligues. Totes tres la superen. Les esmaixades, en canvi, van quedar fora: només les publica l'ACB.
+
+El filtre canvia una quarta part dels miralls del top 3. Amb la segona versió, el mateix jugador es troba a si mateix en primer lloc el 64% de les vegades, i al top 3, el 81-85%. Cal llegir aquesta millora amb prudència, però: un filtre d'alçada sempre ajuda en aquesta prova, perquè el mateix jugador fa la mateixa alçada a les dues lligues. El motiu de fons del filtre no és el número, sinó que els miralls tinguin sentit per a qui coneix el bàsquet.
+
 ## Alguns miralls
 
-Aquests són alguns dels primers resultats, amb la temporada regular 2025-26:
+Aquests són alguns dels resultats de la segona versió, amb la temporada regular 2025-26:
 
-- **Facu Campazzo:** a l'Euroliga, el que més s'assembla al Campazzo de l'ACB és Markquis Nowell, seguit de Kostas Sloukas i Chris Jones. A l'ACB, el que més s'assembla al Campazzo de l'Euroliga és Harald Frey.
-- **Michael Forrest i Carsen Edwards** són el mirall l'un de l'altre: anotadors exteriors amb molt de pes a l'atac.
-- **Nadir Hifi**, el jugador amb més pes a l'atac de l'Euroliga, té com a miralls a l'ACB tres anotadors: Michael Forrest, Timothé Luwawu-Cabarrot i David DeJulius.
-- **Dani Pérez:** a l'Euroliga, Niccolò Mannion, Yago dos Santos i Sergio Llull.
-- **Sasha Vezenkov:** el seu mirall a l'ACB és Melvin Ejim, i el segon, Mario Hezonja.
+- **Facu Campazzo:** a l'Euroliga, els que més s'assemblen al Campazzo de l'ACB són Chris Jones, Matthew Strazel i McKinley Wright IV. A l'ACB, els que més s'assemblen al Campazzo de l'Euroliga són Kendrick Perry, Harald Frey i Raul Neto.
+- **Michael Forrest:** el seu mirall a l'Euroliga és Carsen Edwards, un altre anotador exterior amb molt de pes a l'atac.
+- **Nadir Hifi**, el jugador amb més pes a l'atac de l'Euroliga, té com a miralls a l'ACB Michael Forrest, Ricky Rubio i David DeJulius. El segon és discutible: Rubio és més creador que anotador.
+- **Dani Pérez:** a l'Euroliga, Niccolò Mannion, Tamir Blatt i Juani Marcos.
+- **Sasha Vezenkov:** a l'ACB, Mario Hezonja, Álex Reyes i Trey Lyles.
 
-En general els resultats tenen sentit, tot i que en algun cas es podrien afinar. Quan tingui deu temporades en lloc d'una, els perfils seran més estables i els miralls, més fiables.
+En general els resultats tenen sentit, tot i que n'hi ha que es podrien afinar, com el de Rubio. Quan tingui deu temporades en lloc d'una, els perfils seran més estables i els miralls, més fiables.
 
 ## Què he après
 
 - **Buscar una prova amb resposta coneguda.** "Es troba a si mateix?" m'ha permès triar el mètode amb números i no per intuïció.
+- **Però saber què mesura la prova.** Un filtre d'alçada sempre la millora; per decidir-ne el marge, compta més el criteri de bàsquet.
 - **El més simple pot ser el millor.** Mahalanobis i la PCA són més sofisticats, però aquí funcionen pitjor i costen més d'explicar.
-- **Mirar els resultats un per un.** Les xifres globals eren bones, però només mirant el cas de Campazzo vaig descobrir l'error dels noms.
+- **Mirar els resultats un per un.** Les xifres globals eren bones, però només mirant casos concrets vaig descobrir l'error dels noms i els miralls de base contra pivot.
 - **Un mirall és una proposta, no una veritat.** Per això en mostro tres, i no un de sol.
 
 Més endavant: com es tradueix el rendiment d'una lliga a l'altra.
@@ -83,11 +96,13 @@ Més endavant: com es tradueix el rendiment d'una lliga a l'altra.
 ::: {.callout-note collapse="true"}
 ## Per als curiosos: detalls tècnics
 
-- **Distància principal:** euclidiana ponderada sobre els z-scores. El pes de cada variable és 1 / (nombre de variables de la seva dimensió), i la distància es normalitza per la suma dels pesos. Es calcula per separat per a l'estil (9 variables, 5 dimensions) i el nivell (5 variables), i la distància total és 0,8 · d~estil~ + 0,2 · d~nivell~.
-- **Mahalanobis:** covariància conjunta de les dues lligues (459 jugadors), aplicada amb la descomposició de Cholesky. **PCA:** sobre els z-scores d'estil, 4 components (80% de la variància).
-- **Coincidència del top 3** amb la distància de regle (només estil): Mahalanobis 52%, PCA 47%.
+- **Variables d'estil (12, en 5 dimensions):** Dieta de tir (triples / tirs de camp, tirs lliures / tirs de camp, faltes rebudes per 100 possessions); Creació (AST%, log(assistències / pèrdues), TOV% = 100 · pèrdues / (tirs de camp + 0,44 · tirs lliures + pèrdues)); Rebot (ORB%, rebots defensius per 100); Activitat defensiva (robatoris, taps i faltes comeses per 100); Pes a l'atac (*usage*). **Nivell (5):** TS% amb percentatges encongits, 3P% i TL% encongits, punts per 100 possessions i percentatge de minuts.
+- **Estabilitat de les variables noves** (correlació dels z-scores del mateix jugador a l'ACB i a l'Euroliga): faltes rebudes 0,83, TOV% 0,74, faltes comeses 0,69.
+- **Distància principal:** euclidiana ponderada sobre els z-scores. El pes de cada variable és 1 / (nombre de variables de la seva dimensió), i la distància es normalitza per la suma dels pesos. Distància total = 0,8 · d~estil~ + 0,2 · d~nivell~.
+- **Filtre (segona versió):** exclosos els parells exterior ↔ interior (Base i Escolta / Guard; Alero i Ala-pívot / Forward; Pívot / Center) i diferència d'alçada de més de 7 cm. Si un jugador té menys de 4 candidats, el seu marge s'amplia de 5 en 5 cm, només en la seva direcció. Amb 7 cm es permeten el 45% dels parells, i el filtre exclou el 26% dels miralls del top 3 sense filtre.
+- **Mahalanobis:** covariància conjunta de les dues lligues (459 jugadors), aplicada amb la descomposició de Cholesky. **PCA:** sobre els z-scores d'estil, 5 components (81% de la variància). Coincidència del top 3 amb la distància de regle (només estil): Mahalanobis 45%, PCA 49%.
 - **Emparellament de jugadors:** (1) nom normalitzat (sense accents, en minúscules i amb les paraules ordenades); (2) cognom i inicial del nom dins dels quatre equips de totes dues competicions. En surten 71 jugadors, 47 dels quals superen el llindar a totes dues.
-- **Validació:** posició del mateix jugador entre els candidats de l'altra lliga, en totes dues direccions (ACB → Euroliga i Euroliga → ACB).
-- **Resultat:** taula `miralls` a DuckDB amb el top 3 de cada jugador en totes dues direccions (459 jugadors), sense el mateix jugador.
-- **Codi i decisions:** `analysis/06_miralls.R`; decisions D24 i D25 del registre.
+- **Validació:** posició del mateix jugador entre els candidats de l'altra lliga, en totes dues direccions.
+- **Dades noves:** plantilles de l'ACB (pàgina de plantilla de cada equip, temporada 2025-26) i de l'Euroliga (API pública, plantilla de cada club). 38 peticions en total.
+- **Codi i decisions:** `extract/plantilles_temporada.py`, `analysis/06_miralls.R`; decisions D24, D25 i D26 del registre.
 :::
